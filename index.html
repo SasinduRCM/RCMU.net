@@ -165,5 +165,97 @@
 <script>
   document.querySelectorAll('.footer-year').forEach(el => el.textContent = new Date().getFullYear());
 </script>
+<!-- PWA Install Banner v2 -->
+<div class="install-banner-v2" id="installBannerV2">
+  <div class="ib-icon">📱</div>
+  <div class="ib-text">
+    <div class="ib-title">Install RCMU App</div>
+    <div class="ib-sub">Add to home screen for the best experience</div>
+    <div class="ib-features">
+      <span class="ib-feature">🔔 Duty reminders</span>
+      <span class="ib-feature">⚡ Offline access</span>
+      <span class="ib-feature">🚀 Faster loading</span>
+    </div>
+  </div>
+  <div class="ib-actions">
+    <button class="ib-install" id="ibInstallBtn">Install Now</button>
+    <button class="ib-dismiss" id="ibDismissBtn">Not now</button>
+  </div>
+</div>
+<!-- iOS Safari install tip -->
+<div class="ios-install-tip" id="iosInstallTip">
+  <div class="ios-tip-icon">📲</div>
+  <div class="ios-tip-title">Add RCMU to Your Home Screen</div>
+  <div class="ios-tip-steps">
+    Tap the <span>Share button ⬆</span> in Safari<br>
+    then tap <span>"Add to Home Screen"</span>
+  </div>
+  <button class="ios-tip-close" id="iosTipClose">Got it</button>
+</div>
+
+<script>
+(function(){
+  const DISMISSED_KEY = 'rcmu_install_dismissed_v2';
+  const IOS_KEY       = 'rcmu_ios_tip_dismissed';
+  let deferredPromptV2 = null;
+
+  function isIOS(){
+    return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  }
+  function isInStandaloneMode(){
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  }
+  function show(id){ const el=document.getElementById(id); el&&el.classList.add('show'); }
+  function hide(id){ const el=document.getElementById(id); el&&el.classList.remove('show'); }
+
+  // Android / Chrome — beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPromptV2 = e;
+    if(!localStorage.getItem(DISMISSED_KEY) && !isInStandaloneMode()){
+      setTimeout(()=>show('installBannerV2'), 3000);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    // Install button
+    const installBtn = document.getElementById('ibInstallBtn');
+    installBtn&&installBtn.addEventListener('click', async()=>{
+      if(!deferredPromptV2) return;
+      hide('installBannerV2');
+      deferredPromptV2.prompt();
+      const r = await deferredPromptV2.userChoice;
+      if(r.outcome === 'accepted') localStorage.setItem(DISMISSED_KEY,'1');
+      deferredPromptV2 = null;
+    });
+
+    // Dismiss button
+    const dismissBtn = document.getElementById('ibDismissBtn');
+    dismissBtn&&dismissBtn.addEventListener('click',()=>{
+      hide('installBannerV2');
+      localStorage.setItem(DISMISSED_KEY,'1');
+    });
+
+    // iOS tip
+    const iosTipClose = document.getElementById('iosTipClose');
+    iosTipClose&&iosTipClose.addEventListener('click',()=>{
+      hide('iosInstallTip');
+      localStorage.setItem(IOS_KEY,'1');
+    });
+
+    // Show iOS tip on iOS Safari (not already installed)
+    if(isIOS() && !isInStandaloneMode() && !localStorage.getItem(IOS_KEY)){
+      setTimeout(()=>show('iosInstallTip'), 4500);
+    }
+  });
+
+  // Already installed
+  window.addEventListener('appinstalled', ()=>{
+    hide('installBannerV2');
+    localStorage.setItem(DISMISSED_KEY,'1');
+    if(typeof showToast === 'function') showToast('✅ App installed successfully!','success');
+  });
+})();
+</script>
 </body>
 </html>
