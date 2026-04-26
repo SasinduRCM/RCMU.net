@@ -1130,9 +1130,13 @@ window.disableNotif = function(){
 };
 
 // ── Service Worker ──
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
+if ('serviceWorker' in navigator) {
+  // Get base path for GitHub Pages compatibility (e.g. /repo-name/)
+  const swBase = window.location.pathname.replace(/\/[^\/]*$/, '') || '/';
+  navigator.serviceWorker.register(swBase + '/sw.js', { scope: swBase + '/' })
+    .catch(() => {});
+};
+
 
 // ── POPULATE SWAP DUTY DATES ───────────────────────────────
 function populateSwapDates(){

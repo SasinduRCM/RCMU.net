@@ -257,5 +257,13 @@
   });
 })();
 </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  const swBase = window.location.pathname.replace(/\/[^\/]*$/, '') || '/';
+  navigator.serviceWorker.register(swBase + '/sw.js', { scope: swBase + '/' })
+    .catch(() => {});
+}
+</script>
 </body>
 </html>
