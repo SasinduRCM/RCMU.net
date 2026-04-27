@@ -109,13 +109,12 @@
               <option value="Cartoon drawer">Cartoon drawer</option>
               <option value="Poster drawer">Poster drawer</option>
             </select>
-            <select id="roleSub1" class="role-subfield" style="display:none">
-              <option value="" disabled selected>Select Subcategory</option>
-              <option value="Program presenting">Program presenting</option>
-              <option value="News presenting">News presenting</option>
-              <option value="Dubbing">Dubbing</option>
-              <option value="Sport commentary">Sport commentary</option>
-            </select>
+            <div id="roleSub1" class="role-subfield" style="display:none">
+              <label><input type="checkbox" value="Program presenting"> Program presenting</label>
+              <label><input type="checkbox" value="News presenting"> News presenting</label>
+              <label><input type="checkbox" value="Dubbing"> Dubbing</label>
+              <label><input type="checkbox" value="Sport commentary"> Sport commentary</label>
+            </div>
           </div>
           <div class="role-block">
             <select id="roleField2" class="role-input" style="display:none">
@@ -135,13 +134,12 @@
               <option value="Cartoon drawer">Cartoon drawer</option>
               <option value="Poster drawer">Poster drawer</option>
             </select>
-            <select id="roleSub2" class="role-subfield" style="display:none">
-              <option value="" disabled selected>Select Subcategory</option>
-              <option value="Program presenting">Program presenting</option>
-              <option value="News presenting">News presenting</option>
-              <option value="Dubbing">Dubbing</option>
-              <option value="Sport commentary">Sport commentary</option>
-            </select>
+            <div id="roleSub2" class="role-subfield" style="display:none">
+              <label><input type="checkbox" value="Program presenting"> Program presenting</label>
+              <label><input type="checkbox" value="News presenting"> News presenting</label>
+              <label><input type="checkbox" value="Dubbing"> Dubbing</label>
+              <label><input type="checkbox" value="Sport commentary"> Sport commentary</label>
+            </div>
           </div>
           <div class="role-block">
             <select id="roleField3" class="role-input" style="display:none">     
@@ -161,16 +159,15 @@
               <option value="Cartoon drawer">Cartoon drawer</option>
               <option value="Poster drawer">Poster drawer</option>
             </select>
-            <select id="roleSub3" class="role-subfield" style="display:none">
-              <option value="" disabled selected>Select Subcategory</option>
-              <option value="Program presenting">Program presenting</option>
-              <option value="News presenting">News presenting</option>
-              <option value="Dubbing">Dubbing</option>
-              <option value="Sport commentary">Sport commentary</option>
-            </select>
+            <div id="roleSub3" class="role-subfield" style="display:none">
+              <label><input type="checkbox" value="Program presenting"> Program presenting</label>
+              <label><input type="checkbox" value="News presenting"> News presenting</label>
+              <label><input type="checkbox" value="Dubbing"> Dubbing</label>
+              <label><input type="checkbox" value="Sport commentary"> Sport commentary</label>
+            </div>
           </div>
         </div>
-        <small class="form-note">Select up to 3 roles; announcer subcategories are single selections and are saved appended with <code>-</code>.</small>
+        <small class="form-note">Select up to 3 roles; announcer subcategories may be selected together. Saved as <code>Role - sub1, sub2</code>.</small>
       </div>
       <div class="triple-row full-row">
         <select id="department">
@@ -201,7 +198,7 @@
       <input id="birthday"        type="date" placeholder="Birthday">
       <input id="joinedYear"      placeholder="Joined Year">
     </div>
-    <button onclick="saveStudent()">Save Student</button>
+    <button type="button" onclick="saveStudent()">Save Student</button>
     <p id="msg"></p>
   </div>
 </div>

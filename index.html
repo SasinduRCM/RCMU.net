@@ -1,11 +1,29 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="manifest" href="manifest.json">
+  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rahula College Media Unit Database</title>
-  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+<script>
+// RCMU PWA — GitHub Pages: https://sasindurcm.github.io/RCMU.net/
+(function () {
+  var BASE_URL = 'https://sasindurcm.github.io/RCMU.net';
+
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register(BASE_URL + '/sw.js', {
+      scope: BASE_URL + '/'
+    }).then(function (reg) {
+      reg.update();
+    }).catch(function (e) {
+      console.warn('SW:', e);
+    });
+  }
+})();
+</script>
 </head>
 <body>
 
@@ -258,12 +276,5 @@
 })();
 </script>
 
-<script>
-if ('serviceWorker' in navigator) {
-  const swBase = window.location.pathname.replace(/\/[^\/]*$/, '') || '/';
-  navigator.serviceWorker.register(swBase + '/sw.js', { scope: swBase + '/' })
-    .catch(() => {});
-}
-</script>
 </body>
 </html>

@@ -1,42 +1,31 @@
-// RCMU — Service Worker v4.0
-// GitHub Pages compatible — auto-detects base path
+// RCMU Service Worker v6.0
+// Site: https://sasindurcm.github.io/RCMU.net/
 
-// ── Detect base path (works on localhost AND /repo-name/) ──
-const BASE = self.location.pathname.replace(/\/sw\.js$/, '') || '';
+const CACHE = 'rcmu-v6';
+const BASE  = '/RCMU.net';
 
-const CACHE = 'rcmu-v4';
-
-// All paths are relative to BASE
-const STATIC_PATHS = [
-  '/',
-  '/index.html',
-  '/student-portal.html',
-  '/student-login.html',
-  '/login.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json',
-  '/Rahula_College_Crest.png',
-  '/Media Unit Original logo.png',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-192.png',
-  '/icon-maskable-512.png',
+const PRECACHE = [
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/student-portal.html',
+  BASE + '/student-login.html',
+  BASE + '/login.html',
+  BASE + '/style.css',
+  BASE + '/app.js',
+  BASE + '/manifest.json',
+  BASE + '/404.html',
 ];
 
-// Prefix every path with BASE
-const STATIC = STATIC_PATHS.map(p => BASE + p);
-
-// ── Install ────────────────────────────────────────────────
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(STATIC).catch(() => {}))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then(cache =>
+      Promise.allSettled(PRECACHE.map(url =>
+        cache.add(new Request(url, { cache: 'reload' })).catch(() => {})
+      ))
+    ).then(() => self.skipWaiting())
   );
 });
 
-// ── Activate — delete old caches ──────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -45,100 +34,99 @@ self.addEventListener('activate', e => {
   );
 });
 
-// ── Fetch — Network first, cache fallback ─────────────────
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // Never intercept Firebase / Google API calls
+  const req = e.request;
+  const url = new URL(req.url);
+  if (req.method !== 'GET') return;
   if (
-    url.includes('firestore.googleapis.com') ||
-    url.includes('firebase') ||
-    url.includes('googleapis.com') ||
-    url.includes('gstatic.com') ||
-    url.includes('cdnjs.cloudflare.com') ||
-    e.request.method !== 'GET'
+    url.hostname !== self.location.hostname ||
+    url.hostname.includes('googleapis') ||
+    url.hostname.includes('gstatic') ||
+    url.hostname.includes('firebase') ||
+    url.hostname.includes('cdnjs')
   ) return;
 
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res.status === 200) {
+            caches.open(CACHE).then(c => c.put(req, res.clone()));
+          }
+          return res;
+        })
+        .catch(() =>
+          caches.match(req)
+            .then(cached => cached || caches.match(BASE + '/index.html'))
+        )
+    );
+    return;
+  }
+
   e.respondWith(
-    fetch(e.request)
-      .then(response => {
-        // Cache fresh responses
-        if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE).then(cache => cache.put(e.request, clone));
+    caches.match(req).then(cached => {
+      const net = fetch(req).then(res => {
+        if (res && res.status === 200 && res.type === 'basic') {
+          caches.open(CACHE).then(c => c.put(req, res.clone()));
         }
-        return response;
-      })
-      .catch(() => caches.match(e.request)
-        .then(cached => cached || caches.match(BASE + '/index.html'))
-      )
+        return res;
+      }).catch(() => null);
+      return cached || net;
+    })
   );
 });
 
-// ── Push notifications ─────────────────────────────────────
 self.addEventListener('push', e => {
-  let data = { title: 'RCMU Duty Reminder', body: 'You have an upcoming duty.' };
+  let data = { title: 'RCMU', body: 'You have an upcoming duty.' };
   try { if (e.data) data = e.data.json(); } catch(err) {}
-
-  const urgency = data.urgency || 'default';
   e.waitUntil(
     self.registration.showNotification(data.title || 'RCMU', {
-      body: data.body || data.message || 'Check your student portal.',
+      body: data.body || 'Check your portal.',
       icon: BASE + '/icon-192.png',
       badge: BASE + '/icon-96.png',
-      tag: data.tag || 'rcmu-duty',
+      tag: data.tag || 'rcmu',
       renotify: true,
-      requireInteraction: urgency === 'high',
-      data: { url: data.url || (BASE + '/student-portal.html'), notifId: data.notifId },
+      requireInteraction: data.urgency === 'high',
+      data: { url: data.url || (BASE + '/student-portal.html') },
       actions: [
-        { action: 'open',    title: '📱 Open Portal' },
+        { action: 'open', title: '📱 Open' },
         { action: 'dismiss', title: 'Dismiss' }
       ]
     })
   );
 });
 
-// ── Scheduled reminders via postMessage ───────────────────
 self.addEventListener('message', e => {
   if (!e.data || e.data.type !== 'SCHEDULE_REMINDER') return;
-
   const { notifId, dutyDate, dutyLabel, dutyPeriod, daysBefore, fireAt } = e.data;
   const delay = new Date(fireAt).getTime() - Date.now();
-  if (delay <= 0 || delay > 7 * 24 * 60 * 60 * 1000) return;
-
+  if (delay <= 0 || delay > 7 * 24 * 3600 * 1000) return;
   const msgs = {
     3: `⏰ Duty in 3 days: "${dutyLabel}" on ${dutyDate} (${dutyPeriod})`,
     2: `⏰ Duty in 2 days: "${dutyLabel}" on ${dutyDate} (${dutyPeriod})`,
-    1: `🔔 Tomorrow: "${dutyLabel}" is tomorrow! (${dutyDate}, ${dutyPeriod})`,
+    1: `🔔 Tomorrow: "${dutyLabel}" is tomorrow! (${dutyPeriod})`,
     0: `🚨 TODAY: "${dutyLabel}" duty is today! (${dutyPeriod})`
   };
-
   setTimeout(() => {
     self.registration.showNotification('RCMU Duty Reminder', {
-      body: msgs[daysBefore] || `Duty reminder: "${dutyLabel}"`,
+      body: msgs[daysBefore] || `Duty: "${dutyLabel}"`,
       icon: BASE + '/icon-192.png',
       badge: BASE + '/icon-96.png',
       tag: 'rcmu-reminder-' + notifId,
       requireInteraction: daysBefore === 0,
-      data: { url: BASE + '/student-portal.html', notifId },
-      actions: [
-        { action: 'open',    title: '📱 Open Portal' },
-        { action: 'dismiss', title: 'Dismiss' }
-      ]
+      data: { url: BASE + '/student-portal.html' }
     });
   }, delay);
 });
 
-// ── Notification click ─────────────────────────────────────
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   if (e.action === 'dismiss') return;
-
   const url = e.notification.data?.url || (BASE + '/student-portal.html');
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(wins => {
       const match = wins.find(w => w.url.includes('student-portal'));
-      if (match) { match.focus(); return; }
+      if (match) return match.focus();
       return clients.openWindow(url);
     })
   );
