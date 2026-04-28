@@ -1166,6 +1166,18 @@ function collectRoleValue() {
 window.saveStudent = async function() {
   const user = requireAuth(["admin","editor"]);
   if (!user) return;
+  // ── Role duplicate guard ──────────────────────────────────
+  {
+    const normRole = v => (v==='English Announcer'||v==='Eng.Ann') ? 'English Announce' : v;
+    const activeVals = [1,2,3]
+      .map(i => document.getElementById(`roleField${i}`))
+      .filter(f => f && f.style.display !== 'none' && f.value)
+      .map(f => normRole(f.value));
+    if (activeVals.length !== new Set(activeVals).size) {
+      showMessage("msg", "⚠️ Duplicate role: Sinhala Announcer and English Announcer can only be selected once each. Please fix the highlighted role fields.", "#fb7185");
+      return;
+    }
+  }
   const fields = ["fullname","nickname","studentId","grade","studentClass","department","status","experienceLevel","dutyPercentage","dutyActivities","achievements","profileImageUrl","email","phone","whatsapp","address","birthday","joinedYear"];
   const data = {};
   for (const f of fields) {
