@@ -183,96 +183,179 @@
 <script>
   document.querySelectorAll('.footer-year').forEach(el => el.textContent = new Date().getFullYear());
 </script>
-<!-- PWA Install Banner v2 -->
-<div class="install-banner-v2" id="installBannerV2">
-  <div class="ib-icon">📱</div>
-  <div class="ib-text">
-    <div class="ib-title">Install RCMU App</div>
-    <div class="ib-sub">Add to home screen for the best experience</div>
-    <div class="ib-features">
-      <span class="ib-feature">🔔 Duty reminders</span>
-      <span class="ib-feature">⚡ Offline access</span>
-      <span class="ib-feature">🚀 Faster loading</span>
+<!-- PWA Install Popup -->
+<div id="pwaPopupOverlay" class="pwa-popup-overlay" aria-modal="true" role="dialog" aria-label="Install App">
+  <div class="pwa-popup" id="pwaPopup">
+    <div class="pwa-popup-glow"></div>
+    <button class="pwa-popup-x" id="pwaPopupX" aria-label="Close">✕</button>
+    <div class="pwa-popup-logo">
+      <img src="icon-192.png" alt="RCMU" onerror="this.src='Rahula_College_Crest.png'">
     </div>
-  </div>
-  <div class="ib-actions">
-    <button class="ib-install" id="ibInstallBtn">Install Now</button>
-    <button class="ib-dismiss" id="ibDismissBtn">Not now</button>
+    <div class="pwa-popup-title">Install RCMU App</div>
+    <div class="pwa-popup-sub">Rahula College Media Unit</div>
+    <div class="pwa-popup-features">
+      <div class="pwa-feat"><span>🔔</span><span>Duty reminders</span></div>
+      <div class="pwa-feat"><span>⚡</span><span>Works offline</span></div>
+      <div class="pwa-feat"><span>🚀</span><span>Faster & lighter</span></div>
+      <div class="pwa-feat"><span>📱</span><span>Native app feel</span></div>
+    </div>
+    <button class="pwa-popup-install" id="pwaInstallBtn">
+      <span class="pwa-install-icon">⬇️</span> Install Now
+    </button>
+    <button class="pwa-popup-later" id="pwaLaterBtn">Maybe later</button>
+    <div class="pwa-popup-note">You can always install from your browser menu</div>
   </div>
 </div>
-<!-- iOS Safari install tip -->
-<div class="ios-install-tip" id="iosInstallTip">
-  <div class="ios-tip-icon">📲</div>
-  <div class="ios-tip-title">Add RCMU to Your Home Screen</div>
-  <div class="ios-tip-steps">
-    Tap the <span>Share button ⬆</span> in Safari<br>
-    then tap <span>"Add to Home Screen"</span>
+
+<!-- iOS Safari Install Guide -->
+<div id="iosPopupOverlay" class="pwa-popup-overlay" aria-modal="true" role="dialog">
+  <div class="pwa-popup pwa-popup-ios" id="iosPopup">
+    <button class="pwa-popup-x" id="iosPopupX" aria-label="Close">✕</button>
+    <div class="pwa-popup-logo">
+      <img src="icon-192.png" alt="RCMU" onerror="this.src='Rahula_College_Crest.png'">
+    </div>
+    <div class="pwa-popup-title">Add to Home Screen</div>
+    <div class="pwa-popup-sub">Install RCMU as an app on your iPhone</div>
+    <div class="ios-steps">
+      <div class="ios-step">
+        <div class="ios-step-num">1</div>
+        <div class="ios-step-text">Tap the <strong>Share</strong> button <span class="ios-share-icon">⬆</span> at the bottom of Safari</div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">2</div>
+        <div class="ios-step-text">Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">3</div>
+        <div class="ios-step-text">Tap <strong>"Add"</strong> in the top right corner</div>
+      </div>
+    </div>
+    <button class="pwa-popup-later" id="iosLaterBtn">Got it, maybe later</button>
   </div>
-  <button class="ios-tip-close" id="iosTipClose">Got it</button>
 </div>
 
 <script>
-(function(){
-  const DISMISSED_KEY = 'rcmu_install_dismissed_v2';
-  const IOS_KEY       = 'rcmu_ios_tip_dismissed';
-  let deferredPromptV2 = null;
+(function () {
+  'use strict';
 
-  function isIOS(){
+  const INSTALLED_KEY = 'rcmu_pwa_installed';   // localStorage — permanent once installed
+  const LATER_KEY     = 'rcmu_pwa_later';        // sessionStorage — clears on new tab/visit
+  const IOS_LATER_KEY = 'rcmu_ios_later';        // sessionStorage
+
+  let deferredPrompt = null;
+
+  function isIOS() {
     return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
   }
-  function isInStandaloneMode(){
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
   }
-  function show(id){ const el=document.getElementById(id); el&&el.classList.add('show'); }
-  function hide(id){ const el=document.getElementById(id); el&&el.classList.remove('show'); }
+  function isInstalled() {
+    return !!localStorage.getItem(INSTALLED_KEY) || isStandalone();
+  }
 
-  // Android / Chrome — beforeinstallprompt
+  function showOverlay(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('open');
+    document.body.classList.add('pwa-popup-open');
+  }
+  function hideOverlay(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('open');
+    // Remove body lock only if no other popup is open
+    if (!document.querySelector('.pwa-popup-overlay.open')) {
+      document.body.classList.remove('pwa-popup-open');
+    }
+  }
+
+  // Capture install event
   window.addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
-    deferredPromptV2 = e;
-    if(!localStorage.getItem(DISMISSED_KEY) && !isInStandaloneMode()){
-      setTimeout(()=>show('installBannerV2'), 3000);
+    deferredPrompt = e;
+    // Don't show if already installed or user said later this session
+    if (isInstalled()) return;
+    if (sessionStorage.getItem(LATER_KEY)) return;
+    // Show after 2.5s so page loads first
+    setTimeout(() => showOverlay('pwaPopupOverlay'), 2500);
+  });
+
+  // After DOM ready — wire buttons, check iOS
+  document.addEventListener('DOMContentLoaded', () => {
+
+    // ── Android/Chrome popup ──────────────────────────────
+    document.getElementById('pwaInstallBtn')?.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      hideOverlay('pwaPopupOverlay');
+      deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (result.outcome === 'accepted') {
+        localStorage.setItem(INSTALLED_KEY, '1');
+        if (typeof showToast === 'function') showToast('✅ RCMU installed!', 'success');
+      }
+    });
+
+    // "Maybe later" — save to sessionStorage only, show again next visit
+    document.getElementById('pwaLaterBtn')?.addEventListener('click', () => {
+      hideOverlay('pwaPopupOverlay');
+      sessionStorage.setItem(LATER_KEY, '1');
+    });
+
+    // Close X — same as later
+    document.getElementById('pwaPopupX')?.addEventListener('click', () => {
+      hideOverlay('pwaPopupOverlay');
+      sessionStorage.setItem(LATER_KEY, '1');
+    });
+
+    // Click outside popup to dismiss
+    document.getElementById('pwaPopupOverlay')?.addEventListener('click', e => {
+      if (e.target === document.getElementById('pwaPopupOverlay')) {
+        hideOverlay('pwaPopupOverlay');
+        sessionStorage.setItem(LATER_KEY, '1');
+      }
+    });
+
+    // ── iOS popup ─────────────────────────────────────────
+    if (isIOS() && !isInstalled() && !sessionStorage.getItem(IOS_LATER_KEY)) {
+      setTimeout(() => showOverlay('iosPopupOverlay'), 3000);
     }
-  });
 
-  document.addEventListener('DOMContentLoaded', ()=>{
-    // Install button
-    const installBtn = document.getElementById('ibInstallBtn');
-    installBtn&&installBtn.addEventListener('click', async()=>{
-      if(!deferredPromptV2) return;
-      hide('installBannerV2');
-      deferredPromptV2.prompt();
-      const r = await deferredPromptV2.userChoice;
-      if(r.outcome === 'accepted') localStorage.setItem(DISMISSED_KEY,'1');
-      deferredPromptV2 = null;
+    document.getElementById('iosLaterBtn')?.addEventListener('click', () => {
+      hideOverlay('iosPopupOverlay');
+      sessionStorage.setItem(IOS_LATER_KEY, '1');
+    });
+    document.getElementById('iosPopupX')?.addEventListener('click', () => {
+      hideOverlay('iosPopupOverlay');
+      sessionStorage.setItem(IOS_LATER_KEY, '1');
+    });
+    document.getElementById('iosPopupOverlay')?.addEventListener('click', e => {
+      if (e.target === document.getElementById('iosPopupOverlay')) {
+        hideOverlay('iosPopupOverlay');
+        sessionStorage.setItem(IOS_LATER_KEY, '1');
+      }
     });
 
-    // Dismiss button
-    const dismissBtn = document.getElementById('ibDismissBtn');
-    dismissBtn&&dismissBtn.addEventListener('click',()=>{
-      hide('installBannerV2');
-      localStorage.setItem(DISMISSED_KEY,'1');
+    // Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      hideOverlay('pwaPopupOverlay');
+      hideOverlay('iosPopupOverlay');
+      sessionStorage.setItem(LATER_KEY, '1');
+      sessionStorage.setItem(IOS_LATER_KEY, '1');
     });
-
-    // iOS tip
-    const iosTipClose = document.getElementById('iosTipClose');
-    iosTipClose&&iosTipClose.addEventListener('click',()=>{
-      hide('iosInstallTip');
-      localStorage.setItem(IOS_KEY,'1');
-    });
-
-    // Show iOS tip on iOS Safari (not already installed)
-    if(isIOS() && !isInStandaloneMode() && !localStorage.getItem(IOS_KEY)){
-      setTimeout(()=>show('iosInstallTip'), 4500);
-    }
   });
 
-  // Already installed
-  window.addEventListener('appinstalled', ()=>{
-    hide('installBannerV2');
-    localStorage.setItem(DISMISSED_KEY,'1');
-    if(typeof showToast === 'function') showToast('✅ App installed successfully!','success');
+  // App successfully installed
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem(INSTALLED_KEY, '1');
+    hideOverlay('pwaPopupOverlay');
+    hideOverlay('iosPopupOverlay');
+    if (typeof showToast === 'function') showToast('✅ RCMU app installed successfully!', 'success');
   });
+
 })();
 </script>
 
